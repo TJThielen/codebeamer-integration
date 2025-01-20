@@ -1,0 +1,33 @@
+name: Run Tests and Update Codebeamer
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Run tests and save results
+      - name: Run tests
+        run: |
+          npm install
+          npm test -- --outputFile=test-results.xml --reporter=junit
+
+      # Step 3: Upload results to Codebeamer
+      - name: Update Codebeamer Test Run
+        env:
+          CODEBEAMER_API_URL: https://your-codebeamer-instance/api/v3/testRuns/<test-run-id>/results
+          CODEBEAMER_API_TOKEN: ${{ secrets.CODEBEAMER_API_TOKEN }}
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer $CODEBEAMER_API_TOKEN" \
+            -H "Content-Type: application/xml" \
+            --data-binary @test-results.xml \
+            $CODEBEAMER_API_URL
