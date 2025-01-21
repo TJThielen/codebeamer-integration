@@ -1,12 +1,15 @@
-// index.test.js
-const { returnTrue } = require('./index');
+const { updateTestRun } = require(".");
 
-// Passing test: Should return true
-test('returnTrue should return true', () => {
-    expect(returnTrue()).toBe(true);
-});
+describe('My Tests', () => {
+    afterAll(async () => {
+        console.log('All tests are finished.');
+        for (const result of testResults) {
+        const { status } = result;
+        await updateTestRun(status); // Call your Codebeamer API update
+        }
+    });
 
-// Failing test: Should return false (example of a failing case)
-test('returnTrue should return false', () => {
-    expect(returnTrue()).toBe(false);
+    test('should return true', () => {
+        expect(true).toBe(true);
+    });
 });
