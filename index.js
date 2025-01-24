@@ -140,6 +140,15 @@ async function addTestCaseToTestSet(testSetId, testCaseId){
         ], 
         "type": 'ChoiceFieldValue'
     }]
+
+    if(testSet.customFields[2] == undefined){
+        testSet.customFields[2] = {
+            "fieldId": 1000000,
+            "name": "Test Cases",
+            "values": [],
+            "type": "TableFieldValue"
+          };
+    }
     testSet.customFields[2].values.push(testCase);
 
     const response = await axios.put(
@@ -182,23 +191,55 @@ async function getItem(itemId){
     return response.data;
 }
 
-async function generateTestFromTestSet(testSetId){
-    const response = await axios.post(
-        `https://codebeamer.ptc.sourceallies.com/api/v3/trackers/10065/testruns/generatefromtestset`,
-        {
-            "testSetId": testSetId
-        },
-        {
-            headers: {
-                Authorization: `Basic ${API_TOKEN}`,
-                'Content-Type': 'application/json',
-            },
-        },
-    );
-    return response.data;
-}
+// async function generateTestFromTestSet(testSetId){
+//     const response = await axios.post(
+//         `https://codebeamer.ptc.sourceallies.com/api/v3/trackers/10065/testruns/generatefromtestset`,
+//         {
+//             "testSetId": testSetId
+//         },
+//         {
+//             headers: {
+//                 Authorization: `Basic ${API_TOKEN}`,
+//                 'Content-Type': 'application/json',
+//             },
+//         },
+//     );
+//     return response.data;
+// }
 
-export {createTestCase, addTestCaseToTestSet, addTestRunForTestSet, updateTestRunForTestSet };
+function integrateWithCodebeamer(){
+    let testSetId = -1;
+    const testCases = {};
+    afterEach(async () => {
+        //find set id
+        const testState = expect.getState();
+        const words = testState.currentTestName.split(' ');
+        testSetId = parseInt(words[0].slice(1));
+        const testName = words.slice(1).join(" ");
+
+        //create test case
+        const response = await createTestCase(testName);
+        const testCaseId = response.id;
+
+        //add to test set
+        await addTestCaseToTestSet(testSetId, testCaseId);
+
+        //update test case status locally
+        const status = testState.numPassingAsserts === testState.assertionCalls ? 'Passed' : 'Failed';
+        testCases[testCaseId] = {"status": status, "name": testName};
+    });
+
+    afterAll(async () => {
+        //create test run
+        if(testSetId != -1){
+            const response = await addTestRunForTestSet(testSetId);
+            console.log(response);
+            await new Promise(resolve => {setTimeout(resolve, 1000)});
+            await updateTestRunForTestSet(response.id, testCases);
+        }
+    })
+}
+export {integrateWithCodebeamer};
 // const cases = {
 //     1818: {"status": "Passed", "name": "test passes should pass"},
 //     1819: {"status": "Failed", "name": "test passes should fail"}
@@ -206,3 +247,4 @@ export {createTestCase, addTestCaseToTestSet, addTestRunForTestSet, updateTestRu
 // const resp = await addTestRunForTestSet(1658);
 // const res = await updateTestRunForTestSet(resp.id, cases);
 // console.log(res);
+
