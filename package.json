@@ -7,8 +7,14 @@
     "test": "jest"
   },
   "jest": {
-    "verbose": true
-  },
+  "reporters": [
+    "default",
+    ["jest-junit", {
+      "outputDirectory": "reports",
+      "outputName": "test-report.xml"
+    }]
+  ]
+},
   "author": "",
   "license": "ISC",
   "description": "",
@@ -19,6 +25,7 @@
   },
   "devDependencies": {
     "@babel/preset-env": "^7.26.0",
-    "babel-jest": "^29.7.0"
+    "babel-jest": "^29.7.0",
+    "jest-junit": "^16.0.0"
   }
 }
