@@ -210,6 +210,7 @@ async function getItem(itemId){
 function integrateWithCodebeamer(){
     let testSetId = -1;
     const testCases = {};
+    
     afterEach(async () => {
         //find set id
         const testState = expect.getState();
@@ -217,13 +218,32 @@ function integrateWithCodebeamer(){
         testSetId = parseInt(words[0].slice(1));
         const testName = words.slice(1).join(" ");
 
-        //create test case
-        const response = await createTestCase(testName);
-        const testCaseId = response.id;
+        //check if test set already contains test case
+        const existingTestSet = await getItem(testSetId);
+        const existingTestSetCustomIds = existingTestSet.customFields;
+        const existingTestCases = existingTestSetCustomIds.find(item => item.name === "Test Cases");
+        let createTestsFlag = true;
+        let testCaseId = -1;
 
-        //add to test set
-        await addTestCaseToTestSet(testSetId, testCaseId);
+        if(existingTestCases){
+            const existingTestCaseNames = existingTestCases.values.flat().map(item => item.values[0]);
+            const existingTestCase = existingTestCaseNames.find(val => val.name === testName);
+            if(existingTestCase != undefined){
+                createTestsFlag = false;
+                testCaseId = existingTestCase.id;
+                console.log(`Test Already Exists: "${testName}", not creating a new one`);
+            }
+        }
 
+        if(createTestsFlag){
+            //create test case
+            const response = await createTestCase(testName);
+            testCaseId = response.id;
+
+            //add to test set
+            await addTestCaseToTestSet(testSetId, testCaseId);
+        }
+        
         //update test case status locally
         const status = testState.numPassingAsserts === testState.assertionCalls ? 'Passed' : 'Failed';
         testCases[testCaseId] = {"status": status, "name": testName};
@@ -233,18 +253,118 @@ function integrateWithCodebeamer(){
         //create test run
         if(testSetId != -1){
             const response = await addTestRunForTestSet(testSetId);
-            console.log(response);
             await new Promise(resolve => {setTimeout(resolve, 1000)});
             await updateTestRunForTestSet(response.id, testCases);
         }
     })
 }
-export {integrateWithCodebeamer};
-// const cases = {
-//     1818: {"status": "Passed", "name": "test passes should pass"},
-//     1819: {"status": "Failed", "name": "test passes should fail"}
-// }
-// const resp = await addTestRunForTestSet(1658);
-// const res = await updateTestRunForTestSet(resp.id, cases);
-// console.log(res);
 
+async function createReport(){
+    const report = {
+        cbQl: 'project.id IN (7)',
+        name: 'TJs Api Generated Report 2',
+        addedPermissions: [
+            {
+                access: "READ",
+                project: { id: 7, type: "ProjectReference" },
+                role: { id: 1, name: 'Project Admin', type: 'RoleReference' },
+            }
+        ],
+        columns: [
+            {
+              field: { id: 3, name: 'Summary', type: 'FieldReference' },
+              columnIndex: 0
+            },
+            {
+              field: { id: 7, name: 'Status', type: 'FieldReference' },
+              columnIndex: 1
+            },
+            {
+              field: { id: 2, name: 'Priority', type: 'FieldReference' },
+              columnIndex: 2
+            },
+            {
+              field: { id: 5, name: 'Assigned to', type: 'FieldReference' },
+              columnIndex: 3
+            },
+            {
+              field: { id: 75, name: 'Modified by', type: 'FieldReference' },
+              columnIndex: 4
+            },
+            {
+              field: { id: 74, name: 'Modified on/at', type: 'FieldReference' },
+              columnIndex: 5
+            },
+            {
+              field: { id: 6, name: 'Submitted by', type: 'FieldReference' },
+              columnIndex: 6
+            },
+            {
+              field: { id: 4, name: 'Submitted on/at', type: 'FieldReference' },
+              columnIndex: 7
+            }
+        ],
+        showAllChildren: false
+    };
+
+    const response = await axios.post(
+        'https://codebeamer.ptc.sourceallies.com/api/v3/reports',
+        report,
+        {
+            headers: {
+                Authorization: `Basic ${API_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+        },
+    );
+    return response;
+}
+
+async function getReportResults(id){
+    const response = await axios.get(
+        `https://codebeamer.ptc.sourceallies.com/api/v3/reports/${id}/results`,
+        {
+            headers: {
+                Authorization: `Basic ${API_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+        },
+    );
+    return response.data;
+}
+
+async function getReportItems(id){
+    const response = await axios.get(
+        `https://codebeamer.ptc.sourceallies.com/api/v3/reports/${id}/items`,
+        {
+            headers: {
+                Authorization: `Basic ${API_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+        },
+    );
+    return response.data;
+}
+
+async function getRoles(){
+    const response = await axios.get(
+        `https://codebeamer.ptc.sourceallies.com/api/v3/roles`,
+        {
+            headers: {
+                Authorization: `Basic ${API_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+        },
+    );
+    return response.data;
+}
+
+export {integrateWithCodebeamer};
+
+
+// console.log(await createReport());
+// const res = await getReportResults(31033);
+// const res = await getRoles();
+// const res = await createReport();
+
+// console.log(res);
