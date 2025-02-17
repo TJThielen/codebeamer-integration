@@ -1,8 +1,8 @@
 const { integrateWithCodebeamer } = require('.');
 
+integrateWithCodebeamer();
+
 describe('#1658 test cases', () => {
-    integrateWithCodebeamer();
-    
     test('should pass', () => {
         expect(false).toBe(false);
     });

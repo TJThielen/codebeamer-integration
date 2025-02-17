@@ -1,5 +1,8 @@
 import axios from 'axios';
 import dotenv from 'dotenv';
+import { parseStringPromise } from "xml2js";
+import fs from "fs/promises";
+
 dotenv.config();
 
 const API_TOKEN = process.env.API_TOKEN;
@@ -61,7 +64,7 @@ async function updateTestRunForTestSet(id, statuses) {
             },
             "result": "PASSED",
             "conclusion": "Successful run",
-            "runTime": 10
+            "runTime": parseInt(statuses[caseId].runTime),
         };
     
         const failed = {
@@ -72,7 +75,7 @@ async function updateTestRunForTestSet(id, statuses) {
             },
             "result": "FAILED",
             "conclusion": "Failed run",
-            "runTime": 10
+            "runTime": parseInt(statuses[caseId].runTime),
         }
         const data = status == "Passed" ? passed : failed;
         cases.push(data);
@@ -207,57 +210,6 @@ async function getItem(itemId){
 //     return response.data;
 // }
 
-function integrateWithCodebeamer(){
-    let testSetId = -1;
-    const testCases = {};
-    
-    afterEach(async () => {
-        //find set id
-        const testState = expect.getState();
-        const words = testState.currentTestName.split(' ');
-        testSetId = parseInt(words[0].slice(1));
-        const testName = words.slice(1).join(" ");
-
-        //check if test set already contains test case
-        const existingTestSet = await getItem(testSetId);
-        const existingTestSetCustomIds = existingTestSet.customFields;
-        const existingTestCases = existingTestSetCustomIds.find(item => item.name === "Test Cases");
-        let createTestsFlag = true;
-        let testCaseId = -1;
-
-        if(existingTestCases){
-            const existingTestCaseNames = existingTestCases.values.flat().map(item => item.values[0]);
-            const existingTestCase = existingTestCaseNames.find(val => val.name === testName);
-            if(existingTestCase != undefined){
-                createTestsFlag = false;
-                testCaseId = existingTestCase.id;
-                console.log(`Test Already Exists: "${testName}", not creating a new one`);
-            }
-        }
-
-        if(createTestsFlag){
-            //create test case
-            const response = await createTestCase(testName);
-            testCaseId = response.id;
-
-            //add to test set
-            await addTestCaseToTestSet(testSetId, testCaseId);
-        }
-        
-        //update test case status locally
-        const status = testState.numPassingAsserts === testState.assertionCalls ? 'Passed' : 'Failed';
-        testCases[testCaseId] = {"status": status, "name": testName};
-    });
-
-    afterAll(async () => {
-        //create test run
-        if(testSetId != -1){
-            const response = await addTestRunForTestSet(testSetId);
-            await new Promise(resolve => {setTimeout(resolve, 1000)});
-            await updateTestRunForTestSet(response.id, testCases);
-        }
-    })
-}
 
 async function createReport(){
     const report = {
@@ -359,6 +311,68 @@ async function getRoles(){
     return response.data;
 }
 
+export async function readXML(filePath) {
+  const data = await fs.readFile(filePath, "utf-8");
+  return parseStringPromise(data);
+}
+
+async function integrateWithCodebeamer(){
+    afterAll(async () => {
+        let testSetId = -1;
+        const testCases = {};
+
+        //read report
+        const xml = await readXML("./reports/test-report.xml");
+        const xmlTestCases = xml.testsuites.testsuite[0].testcase;
+
+        xmlTestCases.forEach(async test => {
+            //find set id
+            const words = test.$.classname.split(' ');
+            testSetId = parseInt(words[0].slice(1));
+            const testName = words.slice(1).join(" ");
+
+            //check if test set already contains test case
+            const existingTestSet = await getItem(testSetId);
+            const existingTestSetCustomIds = existingTestSet.customFields;
+            const existingTestCases = existingTestSetCustomIds.find(item => item.name === "Test Cases");
+            let createTestsFlag = true;
+            let testCaseId = -1;
+
+            if(existingTestCases){
+                const existingTestCaseNames = existingTestCases.values.flat().map(item => item.values[0]);
+                const existingTestCase = existingTestCaseNames.find(val => val.name === testName);
+                if(existingTestCase != undefined){
+                    createTestsFlag = false;
+                    testCaseId = existingTestCase.id;
+                    console.log(`Test Already Exists: "${testName}", not creating a new one`);
+                }
+            }
+
+            if(createTestsFlag){
+                //create test case
+                const response = await createTestCase(testName);
+                testCaseId = response.id;
+
+                //add to test set
+                await addTestCaseToTestSet(testSetId, testCaseId);
+            }
+
+            if(test.failure == undefined){
+                testCases[testCaseId] = {"status": "Passed", "name": testName, "runTime": test.$.time};
+            } else {
+                testCases[testCaseId] = {"status": "Failed", "name": testName, "runTime": test.$.time};
+            }
+        })
+
+        //create test run
+        if(testSetId != -1){
+            const response = await addTestRunForTestSet(testSetId);
+            await new Promise(resolve => {setTimeout(resolve, 1000)});
+            await updateTestRunForTestSet(response.id, testCases);
+        }
+    });
+}
+
 export {integrateWithCodebeamer};
 
 
@@ -366,5 +380,8 @@ export {integrateWithCodebeamer};
 // const res = await getReportResults(31033);
 // const res = await getRoles();
 // const res = await createReport();
+// const res = await getItem(6845);
 
 // console.log(res);
+
+// integrateWithCodebeamer();
