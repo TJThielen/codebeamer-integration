@@ -311,6 +311,29 @@ async function getRoles(){
     return response.data;
 }
 
+async function automatedTestRuns(name, testResults){
+    const data = {
+        "createNonExistentTestCases": true,
+        "testCaseTrackerId": 10064,
+        "testResults": testResults,
+        "testRunModel": {
+            "name": name
+        }
+    };
+
+    const response = await axios.post(
+        `https://codebeamer.ptc.sourceallies.com/api/v3/trackers/10067/automatedtestruns`,
+        data,
+        {
+            headers: {
+                Authorization: `Basic ${API_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+        },
+    );
+    return response.data;
+}
+
 export async function readXML(filePath) {
   const data = await fs.readFile(filePath, "utf-8");
   return parseStringPromise(data);
@@ -373,15 +396,38 @@ async function integrateWithCodebeamer(){
     // });
 }
 
-export {integrateWithCodebeamer};
+async function integrateWithCodebeamerAutomated(){
+    const testCases = [];
+
+    //read report
+    const xml = await readXML("./reports/test-report.xml");
+    const xmlTestCases = xml.testsuites.testsuite[0].testcase;
+
+    const groupName = [xml.testsuites.$.name, xml.testsuites.testsuite[0].$.name].join('.');
+
+    xmlTestCases.forEach(async test => {
+        if(test.failure == undefined){
+            testCases.push({"name": test.$.name, "groupName": groupName, "result": "PASSED", "description": "tests description", runTime: Math.ceil(test.$.time), "conclusion": "Passed"});
+        } else {
+            testCases.push({"name": test.$.name, "groupName": groupName, "result": "FAILED", "description": "tests description", runTime: Math.ceil(test.$.time), "conclusion": JSON.stringify(test.failure)});
+        }
+    });
+
+    await automatedTestRuns("unit tests", testCases);
+}
+
+export {integrateWithCodebeamer, integrateWithCodebeamerAutomated};
 
 
 // console.log(await createReport());
 // const res = await getReportResults(31033);
 // const res = await getRoles();
 // const res = await createReport();
-// const res = await getItem(6845);
-
+// const res = await getItem(6996);
+// const res = await getTracker(10067);
+// const res = await addTestRunForTestCase(6992);
 // console.log(res);
 
-integrateWithCodebeamer();
+// integrateWithCodebeamer();
+// automatedTestRuns();
+integrateWithCodebeamerAutomated();
