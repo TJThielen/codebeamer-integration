@@ -1,6 +1,6 @@
-const { integrateWithCodebeamer } = require('.');
+// const { integrateWithCodebeamer } = require('.');
 
-integrateWithCodebeamer();
+// integrateWithCodebeamer();
 
 describe('#1658 test cases', () => {
     test('should pass', () => {

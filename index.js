@@ -317,7 +317,7 @@ export async function readXML(filePath) {
 }
 
 async function integrateWithCodebeamer(){
-    afterAll(async () => {
+    // afterAll(async () => {
         let testSetId = -1;
         const testCases = {};
 
@@ -370,7 +370,7 @@ async function integrateWithCodebeamer(){
             await new Promise(resolve => {setTimeout(resolve, 1000)});
             await updateTestRunForTestSet(response.id, testCases);
         }
-    });
+    // });
 }
 
 export {integrateWithCodebeamer};
@@ -384,4 +384,4 @@ export {integrateWithCodebeamer};
 
 // console.log(res);
 
-// integrateWithCodebeamer();
+integrateWithCodebeamer();
