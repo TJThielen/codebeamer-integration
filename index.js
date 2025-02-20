@@ -168,6 +168,33 @@ async function addTestCaseToTestSet(testSetId, testCaseId){
     return response.data;
 }
 
+async function editItem(id) {
+    const response = await axios.put(
+        `https://codebeamer.ptc.sourceallies.com/api/v3/items/${id}`,
+        {
+            "name": "automatedCR",
+            "description": "test2",
+            "tracker": {
+                "id": 10061,
+                "type": "TrackerReference"
+            },
+            "status": {
+              "id": 1,
+              "name": "New",
+              "type": "ChoiceOptionReference"
+            },
+        },
+        {
+            headers: {
+                Authorization: `Basic ${API_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+        },
+    );
+
+    return response.data;
+}
+
 async function getTracker(trackerId){
     const response = await axios.get(
         `https://codebeamer.ptc.sourceallies.com/api/v3/trackers/${trackerId}/items`,
@@ -194,22 +221,18 @@ async function getItem(itemId){
     return response.data;
 }
 
-// async function generateTestFromTestSet(testSetId){
-//     const response = await axios.post(
-//         `https://codebeamer.ptc.sourceallies.com/api/v3/trackers/10065/testruns/generatefromtestset`,
-//         {
-//             "testSetId": testSetId
-//         },
-//         {
-//             headers: {
-//                 Authorization: `Basic ${API_TOKEN}`,
-//                 'Content-Type': 'application/json',
-//             },
-//         },
-//     );
-//     return response.data;
-// }
-
+async function getItemRelations(itemId){
+    const response = await axios.get(
+        `https://codebeamer.ptc.sourceallies.com/api/v3/items/${itemId}/relations`,
+        {
+            headers: {
+                Authorization: `Basic ${API_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+        },
+    );
+    return response.data;
+}
 
 async function createReport(){
     const report = {
@@ -334,6 +357,62 @@ async function automatedTestRuns(name, testResults){
     return response.data;
 }
 
+async function createAssociation(fromId, toId){
+    const data = {
+        "biDirectionalPropagation": true,
+        "propagatingSuspects": true,
+        "from": {
+            "id": fromId,
+            "type": "TrackerItemReference"
+        },
+        "to": {
+            "id": toId,
+            "type": "TrackerItemReference"
+        },
+        "type": {
+            "id": 1,
+        }
+    };
+
+    const response = await axios.post(
+        `https://codebeamer.ptc.sourceallies.com/api/v3/associations`,
+        data,
+        {
+            headers: {
+                Authorization: `Basic ${API_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+        },
+    );
+
+    return response.data;
+}
+
+
+async function createChangeRequest(){
+    const data = {
+        "name": "automatedCR",
+        "description": "test2",
+        "tracker": {
+            "id": 10061,
+            "type": "TrackerReference"
+        },
+    };
+
+    const response = await axios.post(
+        `https://codebeamer.ptc.sourceallies.com/api/v3/trackers/10061/items`,
+        data,
+        {
+            headers: {
+                Authorization: `Basic ${API_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+        },
+    );
+
+    return response.data;
+}
+
 export async function readXML(filePath) {
   const data = await fs.readFile(filePath, "utf-8");
   return parseStringPromise(data);
@@ -423,11 +502,20 @@ export {integrateWithCodebeamer, integrateWithCodebeamerAutomated};
 // const res = await getReportResults(31033);
 // const res = await getRoles();
 // const res = await createReport();
-// const res = await getItem(6996);
-// const res = await getTracker(10067);
+// const res = await getItem(7367);
+// const res = await getItem(6783);
+// const res = await getItemRelations(7367);
+// const res = await getTracker(10064);
 // const res = await addTestRunForTestCase(6992);
+// const res = await createChangeRequest();
+// const res = await createAssociation(7392, 6992);
+// const res = await createTestCase("del this");
+// const res = await createChangeRequest();
+// const res = await editItem(7900);
+
 // console.log(res);
 
 // integrateWithCodebeamer();
 // automatedTestRuns();
-integrateWithCodebeamerAutomated();
+// integrateWithCodebeamerAutomated();
+
